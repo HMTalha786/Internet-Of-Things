@@ -13,14 +13,22 @@
 
 File myFile;
 
-// JSON Packet Sending time Counter ( After every 30 sec )
-unsigned long previous_time = 30000;
+// JSON Packet Sending time Counter ( After every 120 sec )
+unsigned long timer = 120000;
 
 // Downtime Value i.e. 33 Seconds
 unsigned long DT = 33000;
 
 // Sensor`s Status Bits ( 0 => ON , 1 => OFF )
-int SS1, SS2, SS3, SS4, SS5, SS6;
+int SS1 = 0;
+int SS2 = 0;
+int SS3 = 0;
+int SS4 = 0;
+int SS5 = 0;
+int SS6 = 0;
+
+// Sensor 1 Previous Status Bit
+int PS1 = 0;
 
 // Sensor`s Input Pin Values
 int S1 = 0;
@@ -64,7 +72,6 @@ unsigned long CTS6 = 0;
 
 void setup() {
   Serial.begin(500000);
-  pinMode(2, INPUT);
 
   if (!SD.begin(53)) {
     Serial.println("SD Card initialization failed !!! : Are the switches well placed ???");
@@ -123,10 +130,13 @@ void loop() {
   P6 = S6;
 
   // JSON Packet Sent after every 10 sec ...................................................          
-  if ( millis() >= previous_time ) { previous_time = millis()+30000UL; json_packet_sender(); }
+  if ( millis() >= timer ) { timer = millis()+120000UL; json_packet_sender(); }
 
-  // Read Pin 2 from wifi shield .................................................
-  if ( digitalRead(2) ){ SD.remove("data.txt"); }  // PIN 2 = 1 
+  // Event trigger instantly if there is a change ( i.e. 0 -> 1 or 1 -> 0 ) ................
+  if( SS1 != PS1 ){ timer = millis()+120000UL; json_packet_sender(); PS1 = SS1; }
+
+  // Read serial feedback from wifi shield ( Rx = 1 ).......................................
+  if (Serial.available() > 0) { if ( Serial.read() == 49 ){ SD.remove("data.txt"); } }  
 }
 
 void json_packet_sender(){
@@ -155,14 +165,14 @@ void json_packet_sender(){
   JSON_Entry.prettyPrintTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
   String json = JSONmessageBuffer;
 
-  // Write to SD Card ......................................................
+  // Write to SD Card ...............................................................
   myFile = SD.open("data.txt", FILE_WRITE);
   if (myFile) { myFile.print(json); myFile.print(","); myFile.close(); }
 
   digitalWrite(Q0_4, HIGH);
   delay(10);
 
-  // Read from SD Card ....................................................
+  // Read from SD Card .............................................................
   myFile = SD.open("data.txt");
   if (myFile) { Serial.print("[");
     for(int n = 0 ; n < (myFile.size())-1 ; n++){ Serial.print(char(myFile.read())); }
