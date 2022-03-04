@@ -1,26 +1,21 @@
-/* 
- * JSON Data will be generated after every 30s, but send only when it is different that it`s previous one. 
- * But if no change occur for about 2 minutes then data will be sentto inform cloud that line is down, not disconnected.
-*/
-
 #include <ArduinoJson.h>
 
-// JSON Packet Sending time Counter ( After every 30 sec )
-unsigned long timer = 30000;
+// JSON Packet Sending time Counter ( After every 120s i.e. 2 min )
+unsigned long timer = 120000;
 
 // Downtime Value i.e. 33 Seconds
 unsigned long DT = 33000;
 
-// JSON Packet Sending Counter for down line
-int Counter = 0;  
-                   
 // Sensor`s Status Bits ( 0 => ON , 1 => OFF )
-int SS1;
-int SS2;
-int SS3;
-int SS4;
-int SS5;
-int SS6;
+int SS1 = 0;
+int SS2 = 0;
+int SS3 = 0;
+int SS4 = 0;
+int SS5 = 0;
+int SS6 = 0;
+
+// Sensor 1 Previous Status Bit
+int PS1 = 0;
 
 // Sensor`s Input Pin Values
 int S1 = 0;
@@ -62,23 +57,11 @@ unsigned long CTS4 = 0;
 unsigned long CTS5 = 0;
 unsigned long CTS6 = 0;
 
-// JSON comparision strings
-String new_json;
-String pre_json;
-
-/*======================================================================================================================================================================*/
-
 void setup() {
   Serial.begin(500000);
 }
 
-/*======================================================================================================================================================================*/
-
 void loop() {
-
-  if ( millis() >= timer ) { timer = millis()+30000UL; json_creater(); }       /* Send data after every 30s if line is up ( running ) */
-  
-  if ( Counter == 4 ) { json_sender(); }                                      /* Send data after every 2 min if line is down ( not running ) */
   
   // Sensor 1 ..............................................................................
   S1 = digitalRead(I0_12);
@@ -127,22 +110,31 @@ void loop() {
   if ( S6 == 0 && P6 == 0 && ( ( millis() - DTS6 ) > DT ) ) { SS6=1; } 
   if ( S6 == 1 && P6 == 1 && ( ( millis() - CTS6 ) > DT ) ) { SS6=1; } 
   P6 = S6;
+
+  // JSON Packet Sent after every 120 sec ...................................................          
+  if ( millis() >= timer ) { timer = millis()+120000UL; json_packet_sender(); }
+
+  // Event trigger instantly if there is a change ( i.e. 0 -> 1 or 1 -> 0 ) .................
+  if( PS1 != SS1 ){ timer = millis()+120000UL; json_packet_sender(); PS1 = SS1; }
 }
 
-/*======================================================================================================================================================================*/
-
-void json_creater(){
+void json_packet_sender(){
   
-  StaticJsonBuffer<300> JSON_Packet;                        
-  JsonObject& JSON_Entry = JSON_Packet.createObject();      
+  // Declaring static JSON buffer ......................................................................
+  StaticJsonBuffer<300> JSON_Packet;   
 
+  // Creating JSON Object ..............................................................................
+  JsonObject& JSON_Entry = JSON_Packet.createObject();
+
+  // Declaring JSON Key Value Pairs of Sensor Counts ...................................................
   JSON_Entry["SR1"] = count1;
   JSON_Entry["SR2"] = count2;
   JSON_Entry["SR3"] = count3;
   JSON_Entry["SR4"] = count4;
   JSON_Entry["SR5"] = count5;
   JSON_Entry["SR6"] = count6;
-  
+
+  // Declaring JSON Key Value Pairs of Sensor Status ...................................................
   JSON_Entry["SS1"] = SS1;
   JSON_Entry["SS2"] = SS2;
   JSON_Entry["SS3"] = SS3;
@@ -152,22 +144,11 @@ void json_creater(){
 
   char JSONmessageBuffer[300];
   JSON_Entry.prettyPrintTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
-  new_json = JSONmessageBuffer; 
 
-  if ( new_json != pre_json ) { json_sender(); } else { Counter++; }
-}
+  Serial.print(JSONmessageBuffer);
+  Serial.println('A');
 
-/*======================================================================================================================================================================*/
-
-void json_sender(){
-
-  Serial.print(new_json); 
-  Serial.println('A'); 
-    
-  digitalWrite(Q0_4, HIGH); 
-  delay(10); 
+  digitalWrite(Q0_4, HIGH);
+  delay(10);
   digitalWrite(Q0_4, LOW);
-
-  pre_json = new_json;
-  Counter = 0; 
 }

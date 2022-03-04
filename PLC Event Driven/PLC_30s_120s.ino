@@ -12,7 +12,7 @@ unsigned long timer = 30000;
 unsigned long DT = 33000;
 
 // JSON Packet Sending Counter for down line
-int Counter = 0;  
+int DT_Counter = 0;  
                    
 // Sensor`s Status Bits ( 0 => ON , 1 => OFF )
 int SS1;
@@ -78,7 +78,7 @@ void loop() {
 
   if ( millis() >= timer ) { timer = millis()+30000UL; json_creater(); }       /* Send data after every 30s if line is up ( running ) */
   
-  if ( Counter == 4 ) { json_sender(); }                                      /* Send data after every 2 min if line is down ( not running ) */
+  if ( DT_Counter == 4 ) { json_sender(); }                                    /* Send data after every 2 min if line is down ( not running ) */
   
   // Sensor 1 ..............................................................................
   S1 = digitalRead(I0_12);
@@ -154,7 +154,7 @@ void json_creater(){
   JSON_Entry.prettyPrintTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
   new_json = JSONmessageBuffer; 
 
-  if ( new_json != pre_json ) { json_sender(); } else { Counter++; }
+  if ( new_json != pre_json ) { json_sender(); } else { DT_Counter++; }
 }
 
 /*======================================================================================================================================================================*/
@@ -169,5 +169,5 @@ void json_sender(){
   digitalWrite(Q0_4, LOW);
 
   pre_json = new_json;
-  Counter = 0; 
+  DT_Counter = 0; 
 }
