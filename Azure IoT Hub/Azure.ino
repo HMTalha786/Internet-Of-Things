@@ -34,7 +34,10 @@ int x = 0;
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
-static const char* connectionString = "";
+//static const char* connectionString = "HostName=<hostname>;DeviceId=<LineId>;SharedAccessKey=<PrimaryKey>";
+//static const char* connectionString = "HostName=procheck-prod.azure-devices.net;DeviceId=test1_vuqxi;SharedAccessKey=mtxT99ISbTIEQ34BRlTLGnvF8U1SPFvHxZssgaYx8oI=";
+
+static const char* connectionString = "HostName=procheck-prod.azure-devices.net;DeviceId=testingnow_avi63;SharedAccessKey=GdbbD6RWnNdj1/gio34aVQYf/fsQq5G8awGBNpaR1A4=";
 
 class MyCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
@@ -77,7 +80,7 @@ void setup() {
   delay(5000);
   Serial1.begin(500000);
   pinMode(14, OUTPUT);  // Red WiFi LED
-  pinMode(21, OUTPUT);  // Bluetooth Connect Switch
+  pinMode(21, OUTPUT);  // BLE Switch
   pinMode(15, OUTPUT);  // Green RGB LED
   pinMode(32, OUTPUT);  // Red RGB LED
   pinMode(33, OUTPUT);  // Blue RGB LED
@@ -154,10 +157,10 @@ void connectToWiFi(const char * ssid, const char * pwd){
     ledState = (ledState + 1) % 2;              /* Flip LED State */ 
     delay(500);
     Serial.print(".");
-    if (millis() - Time_Checker > 600000) { ESP.restart(); }
+    if (millis() - Time_Checker > 30000) { ESP.restart(); }
   }
   
-  digitalWrite(14, 0); 
+  digitalWrite(14, 1); 
   Serial.println();
   Serial.println("WiFi connected!");
   Serial.print("IP address: "); 
