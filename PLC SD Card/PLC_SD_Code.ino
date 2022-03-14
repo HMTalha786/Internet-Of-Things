@@ -70,6 +70,8 @@ unsigned long CTS4 = 0;
 unsigned long CTS5 = 0;
 unsigned long CTS6 = 0;
 
+/*============================================================================================================================================================================*/
+
 void setup() {
   Serial.begin(500000);
 
@@ -78,6 +80,8 @@ void setup() {
     while (1);
   }
 }
+
+/*============================================================================================================================================================================*/
 
 void loop() {
   
@@ -129,15 +133,17 @@ void loop() {
   if ( S6 == 1 && P6 == 1 && ( ( millis() - CTS6 ) > DT ) ) { SS6=1; } 
   P6 = S6;
 
+  // Read serial feedback from wifi shield ( Rx = 1 ).......................................
+  if (Serial.available() > 0) { if ( Serial.read() == 49 ){ SD.remove("data.txt"); } }  
+
   // JSON Packet Sent after every 10 sec ...................................................          
   if ( millis() >= timer ) { timer = millis()+120000UL; json_packet_sender(); }
 
   // Event trigger instantly if there is a change ( i.e. 0 -> 1 or 1 -> 0 ) ................
-  if( SS1 != PS1 ){ timer = millis()+120000UL; json_packet_sender(); PS1 = SS1; }
-
-  // Read serial feedback from wifi shield ( Rx = 1 ).......................................
-  if (Serial.available() > 0) { if ( Serial.read() == 49 ){ SD.remove("data.txt"); } }  
+  if( SS1 != PS1 ){ event_sender(); PS1 = SS1; }
 }
+
+/*============================================================================================================================================================================*/
 
 void json_packet_sender(){
 
@@ -170,7 +176,7 @@ void json_packet_sender(){
   if (myFile) { myFile.print(json); myFile.print(","); myFile.close(); }
 
   digitalWrite(Q0_4, HIGH);
-  delay(10);
+  delay(50);
 
   // Read from SD Card .............................................................
   myFile = SD.open("data.txt");
@@ -180,6 +186,43 @@ void json_packet_sender(){
     myFile.close();
   }
 
-  delay(10);
+  delay(50);
+  digitalWrite(Q0_4, LOW);
+}
+
+/*============================================================================================================================================================================*/
+
+void event_sender(){
+  
+  // Creating JSON Object and Declaring static JSON buffer .............................................
+  StaticJsonBuffer<300> JSON_Packet;   
+  JsonObject& JSON_Entry = JSON_Packet.createObject();
+
+  // Declaring JSON Key Value Pairs of Sensor Counts ...................................................
+  JSON_Entry["SR1"] = count1;
+  JSON_Entry["SR2"] = count2;
+  JSON_Entry["SR3"] = count3;
+  JSON_Entry["SR4"] = count4;
+  JSON_Entry["SR5"] = count5;
+  JSON_Entry["SR6"] = count6;
+
+  // Declaring JSON Key Value Pairs of Sensor Status ...................................................
+  JSON_Entry["SS1"] = SS1;
+  JSON_Entry["SS2"] = SS2;
+  JSON_Entry["SS3"] = SS3;
+  JSON_Entry["SS4"] = SS4;
+  JSON_Entry["SS5"] = SS5;
+  JSON_Entry["SS6"] = SS6;
+
+  char JSONmessageBuffer[300];
+  JSON_Entry.prettyPrintTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
+
+  Serial.print("[");
+  Serial.print(JSONmessageBuffer);
+  Serial.print("]");
+  Serial.println('A');
+
+  digitalWrite(Q0_4, HIGH);
+  delay(50);
   digitalWrite(Q0_4, LOW);
 }
