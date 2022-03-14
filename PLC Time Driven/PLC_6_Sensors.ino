@@ -140,7 +140,7 @@ void json_packet_sender(){
   JSON_Entry.prettyPrintTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
 
   Serial.print(JSONmessageBuffer);
-//  Serial.println('A');
+  Serial.println('A');
 
   digitalWrite(Q0_4, HIGH);
   delay(10);
