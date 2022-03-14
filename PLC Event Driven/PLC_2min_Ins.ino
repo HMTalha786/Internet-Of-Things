@@ -111,11 +111,12 @@ void loop() {
   if ( S6 == 1 && P6 == 1 && ( ( millis() - CTS6 ) > DT ) ) { SS6=1; } 
   P6 = S6;
 
+  // Event trigger instantly if there is a change ( i.e. 0 -> 1 or 1 -> 0 ) .................
+  if( PS1 != SS1 ){ timer = millis()+120000UL; json_packet_sender(); PS1 = SS1; }
+
   // JSON Packet Sent after every 120 sec ...................................................          
   if ( millis() >= timer ) { timer = millis()+120000UL; json_packet_sender(); }
 
-  // Event trigger instantly if there is a change ( i.e. 0 -> 1 or 1 -> 0 ) .................
-  if( PS1 != SS1 ){ timer = millis()+120000UL; json_packet_sender(); PS1 = SS1; }
 }
 
 void json_packet_sender(){
