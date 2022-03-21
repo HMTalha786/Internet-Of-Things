@@ -35,9 +35,8 @@ int x = 0;
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
 //static const char* connectionString = "HostName=<hostname>;DeviceId=<LineId>;SharedAccessKey=<PrimaryKey>";
-//static const char* connectionString = "HostName=procheck-prod.azure-devices.net;DeviceId=test1_vuqxi;SharedAccessKey=mtxT99ISbTIEQ34BRlTLGnvF8U1SPFvHxZssgaYx8oI=";
 
-static const char* connectionString = "HostName=procheck-prod.azure-devices.net;DeviceId=testingnow_avi63;SharedAccessKey=GdbbD6RWnNdj1/gio34aVQYf/fsQq5G8awGBNpaR1A4=";
+static const char* connectionString = "";
 
 class MyCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
@@ -92,7 +91,7 @@ void setup() {
 
   /* ----- Turn ON the bluetooth ----- */
   if(digitalRead(21) == HIGH){
-    BLEDevice::init("PROCHECK WIFI SHIELD");
+    BLEDevice::init("ESP32 Board");
     BLEServer *pServer = BLEDevice::createServer();
     BLEService *pService = pServer->createService(SERVICE_UUID);
     BLECharacteristic *pCharacteristic = pService->createCharacteristic( CHARACTERISTIC_UUID,BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE );
