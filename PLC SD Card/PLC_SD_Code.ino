@@ -74,10 +74,10 @@ unsigned long CTS6 = 0;
 
 void setup() {
   Serial.begin(500000);
-
-  if (!SD.begin(53)) {
-    Serial.println("SD Card initialization failed !!! : Are the switches well placed ???");
-    while (1);
+  if (SD.begin(53)) { 
+    digitalWrite(Q0_6, HIGH); digitalWrite(Q0_7, HIGH); 
+  } else { 
+    digitalWrite(Q0_6, LOW); digitalWrite(Q0_7, LOW); 
   }
 }
 
@@ -136,16 +136,30 @@ void loop() {
   // Read serial feedback from wifi shield ( Rx = 1 ).......................................
   if (Serial.available() > 0) { if ( Serial.read() == 49 ){ SD.remove("data.txt"); } }  
 
-  // JSON Packet Sent after every 10 sec ...................................................          
-  if ( millis() >= timer ) { timer = millis()+120000UL; json_packet_sender(); }
+  // Check if SD Card working ..............................................................  
+  if (SD.begin(53)) { 
 
-  // Event trigger instantly if there is a change ( i.e. 0 -> 1 or 1 -> 0 ) ................
-  if( SS1 != PS1 ){ event_sender(); PS1 = SS1; }
+    // JSON Packet Sent after every 10 sec .................................................
+    if ( millis() >= timer ) { timer = millis()+120000UL; json_through_sd(); }     
+    
+    // Event trigger instantly if there is a change ........................................
+    if( SS1 != PS1 ){ json_sender(); PS1 = SS1; }                                  
+  } 
+
+  // Check if SD Card not working ..........................................................
+  if (!SD.begin(53)) { 
+    
+    // JSON Packet Sent after every 10 sec .................................................
+    if ( millis() >= timer ) { timer = millis()+120000UL; json_sender(); }   
+
+    // Event trigger instantly if there is a change ........................................
+    if( PS1 != SS1 ){ timer = millis()+120000UL; json_through_sd(); PS1 = SS1; }   
+  }
 }
 
 /*============================================================================================================================================================================*/
 
-void json_packet_sender(){
+void json_through_sd(){
 
   // Declaring static JSON buffer and Creating JSON Object .............................................
   StaticJsonBuffer<300> JSON_Packet;   
@@ -176,6 +190,7 @@ void json_packet_sender(){
   if (myFile) { myFile.print(json); myFile.print(","); myFile.close(); }
 
   digitalWrite(Q0_4, HIGH);
+  digitalWrite(Q0_5, HIGH);
   delay(50);
 
   // Read from SD Card .............................................................
@@ -188,11 +203,12 @@ void json_packet_sender(){
 
   delay(50);
   digitalWrite(Q0_4, LOW);
+  digitalWrite(Q0_5, LOW);
 }
 
 /*============================================================================================================================================================================*/
 
-void event_sender(){
+void json_sender(){
   
   // Creating JSON Object and Declaring static JSON buffer .............................................
   StaticJsonBuffer<300> JSON_Packet;   
@@ -220,9 +236,11 @@ void event_sender(){
   Serial.print("[");
   Serial.print(JSONmessageBuffer);
   Serial.print("]");
-  Serial.println('A');
+//  Serial.println('A');
 
   digitalWrite(Q0_4, HIGH);
+  digitalWrite(Q0_5, HIGH);
   delay(50);
   digitalWrite(Q0_4, LOW);
+  digitalWrite(Q0_5, LOW);
 }
