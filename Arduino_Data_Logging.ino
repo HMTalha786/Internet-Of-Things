@@ -74,10 +74,13 @@ unsigned long CTS6 = 0;
 
 void setup() {
   Serial.begin(500000);
+  
   if (SD.begin(53)) { 
-    digitalWrite(Q0_6, HIGH); digitalWrite(Q0_7, HIGH); 
+    digitalWrite(Q0_6, HIGH); 
+    digitalWrite(Q0_7, HIGH); 
   } else { 
-    digitalWrite(Q0_6, LOW); digitalWrite(Q0_7, LOW); 
+    digitalWrite(Q0_6, LOW); 
+    digitalWrite(Q0_7, LOW); 
   }
 }
 
@@ -136,24 +139,16 @@ void loop() {
   // Read serial feedback from wifi shield ( Rx = 1 ).......................................
   if (Serial.available() > 0) { if ( Serial.read() == 49 ){ SD.remove("data.txt"); } }  
 
-  // Check if SD Card working ..............................................................  
-  if (SD.begin(53)) { 
+  // JSON Packet Sent after every 2 min ....................................................
+  if ( millis() >= timer ) {
+    if (SD.begin(53)){ timer = millis()+120000UL; json_through_sd(); } 
+    else { timer = millis()+120000UL; json_sender(); }
+  }
 
-    // JSON Packet Sent after every 10 sec .................................................
-    if ( millis() >= timer ) { timer = millis()+120000UL; json_through_sd(); }     
-    
-    // Event trigger instantly if there is a change ........................................
-    if( SS1 != PS1 ){ json_sender(); PS1 = SS1; }                                  
-  } 
-
-  // Check if SD Card not working ..........................................................
-  if (!SD.begin(53)) { 
-    
-    // JSON Packet Sent after every 10 sec .................................................
-    if ( millis() >= timer ) { timer = millis()+120000UL; json_sender(); }   
-
-    // Event trigger instantly if there is a change ........................................
-    if( PS1 != SS1 ){ timer = millis()+120000UL; json_through_sd(); PS1 = SS1; }   
+  // Event trigger instantly if there is a change ..........................................
+  if ( SS1 != PS1 ) {
+    if (SD.begin(53)){ json_sender(); PS1 = SS1; } 
+    else { timer = millis()+120000UL; json_through_sd(); PS1 = SS1; }
   }
 }
 
@@ -235,9 +230,8 @@ void json_sender(){
 
   Serial.print("[");
   Serial.print(JSONmessageBuffer);
-  Serial.print("]");
-//  Serial.println('A');
-
+  Serial.println("]");
+  
   digitalWrite(Q0_4, HIGH);
   digitalWrite(Q0_5, HIGH);
   delay(50);
