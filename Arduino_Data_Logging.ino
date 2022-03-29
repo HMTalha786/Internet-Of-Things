@@ -76,11 +76,11 @@ void setup() {
   Serial.begin(500000);
   
   if (SD.begin(53)) { 
-    digitalWrite(Q0_6, HIGH); 
-    digitalWrite(Q0_7, HIGH); 
+    digitalWrite(Q0_0, HIGH); 
+    digitalWrite(Q0_1, HIGH); 
   } else { 
-    digitalWrite(Q0_6, LOW); 
-    digitalWrite(Q0_7, LOW); 
+    digitalWrite(Q0_0, LOW); 
+    digitalWrite(Q0_1, LOW); 
   }
 }
 
@@ -185,7 +185,6 @@ void json_through_sd(){
   if (myFile) { myFile.print(json); myFile.print(","); myFile.close(); }
 
   digitalWrite(Q0_4, HIGH);
-  digitalWrite(Q0_5, HIGH);
   delay(50);
 
   // Read from SD Card .............................................................
@@ -198,7 +197,6 @@ void json_through_sd(){
 
   delay(50);
   digitalWrite(Q0_4, LOW);
-  digitalWrite(Q0_5, LOW);
 }
 
 /*============================================================================================================================================================================*/
@@ -233,8 +231,6 @@ void json_sender(){
   Serial.println("]");
   
   digitalWrite(Q0_4, HIGH);
-  digitalWrite(Q0_5, HIGH);
   delay(50);
   digitalWrite(Q0_4, LOW);
-  digitalWrite(Q0_5, LOW);
 }
