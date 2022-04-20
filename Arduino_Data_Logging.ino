@@ -1,12 +1,3 @@
-/* Accumulate the data for 30 seconds
- * Write it to SD Card
- * Read from SD Card
- * Send to Tx Pin
- * Check if Pin 2 is HIGH
- * If high then clear SD Card
- * Else keep on writing to SD
-*/
-
 #include <ArduinoJson.h>
 #include <SPI.h>
 #include <SD.h>
@@ -27,8 +18,10 @@ int SS4 = 0;
 int SS5 = 0;
 int SS6 = 0;
 
-// Sensor 1 Previous Status Bit
+// Sensor 1, 3, 5 Previous Status Bit
 int PS1 = 0;
+int PS3 = 0;
+int PS5 = 0;
 
 // Sensor`s Input Pin Values
 int S1 = 0;
@@ -76,9 +69,11 @@ void setup() {
   Serial.begin(500000);
   
   if (SD.begin(53)) { 
+    Serial.println("SD Card Connected");
     digitalWrite(Q0_0, HIGH); 
     digitalWrite(Q0_1, HIGH); 
   } else { 
+    Serial.println("SD Card Connected");
     digitalWrite(Q0_0, LOW); 
     digitalWrite(Q0_1, LOW); 
   }
@@ -139,16 +134,16 @@ void loop() {
   // Read serial feedback from wifi shield ( Rx = 1 ).......................................
   if (Serial.available() > 0) { if ( Serial.read() == 49 ){ SD.remove("data.txt"); } }  
 
+  // Event trigger instantly if there is a change ..........................................
+  if ( PS1 != SS1 || PS3 != SS3 || PS5 != SS5 ) {
+    if (SD.begin(53)){ json_sender(); PS1 = SS1; PS1 = SS1; PS5 = SS5; } 
+    else { timer = millis()+120000UL; json_through_sd(); PS1 = SS1; PS1 = SS1; PS5 = SS5; }
+  }
+
   // JSON Packet Sent after every 2 min ....................................................
   if ( millis() >= timer ) {
     if (SD.begin(53)){ timer = millis()+120000UL; json_through_sd(); } 
     else { timer = millis()+120000UL; json_sender(); }
-  }
-
-  // Event trigger instantly if there is a change ..........................................
-  if ( SS1 != PS1 ) {
-    if (SD.begin(53)){ json_sender(); PS1 = SS1; } 
-    else { timer = millis()+120000UL; json_through_sd(); PS1 = SS1; }
   }
 }
 
