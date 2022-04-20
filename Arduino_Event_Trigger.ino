@@ -14,8 +14,10 @@ int SS4 = 0;
 int SS5 = 0;
 int SS6 = 0;
 
-// Sensor 1 Previous Status Bit
+// Sensor 1, 3, 5 Previous Status Bit
 int PS1 = 0;
+int PS3 = 0;
+int PS5 = 0;
 
 // Sensor`s Input Pin Values
 int S1 = 0;
@@ -112,10 +114,22 @@ void loop() {
   P6 = S6;
 
   // Event trigger instantly if there is a change ( i.e. 0 -> 1 or 1 -> 0 ) .................
-  if( PS1 != SS1 ){ timer = millis()+120000UL; json_packet_sender(); PS1 = SS1; }
+  if( PS1 != SS1 || PS3 != SS3 || PS5 != SS5 )
+  { 
+    timer = millis()+120000UL; 
+    json_packet_sender(); 
+    PS1 = SS1; 
+    PS3 = SS3; 
+    PS5 = SS5; 
+  }
+ 
 
   // JSON Packet Sent after every 120 sec ...................................................          
-  if ( millis() >= timer ) { timer = millis()+120000UL; json_packet_sender(); }
+  if ( millis() >= timer ) 
+  { 
+    timer = millis()+120000UL; 
+    json_packet_sender(); 
+  }
 
 }
 
