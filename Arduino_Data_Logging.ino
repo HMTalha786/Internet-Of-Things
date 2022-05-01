@@ -72,6 +72,7 @@ void setup() {
     Serial.println("SD Card Connected");
     digitalWrite(Q0_0, HIGH); 
     digitalWrite(Q0_1, HIGH); 
+    SD.remove("data.txt");
   } else { 
     Serial.println("SD Card Connected");
     digitalWrite(Q0_0, LOW); 
