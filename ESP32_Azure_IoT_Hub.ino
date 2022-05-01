@@ -1,14 +1,3 @@
-/* Enables bluetooth when pin 21 is high .................... Done
- * Get data from BLE App .................................... Done
- * Parse it into respective credential variables ............ Done
- * Store the data into EEPROM ............................... Done
- * Connect to WiFi through saved values ..................... Done
- * Establish Connection with Azure IoT Hub .................. Done
- * Read data from Serial Input .............................. Done
- * Send data to cloud using MQTT ............................ Done
- * Blink LEDs on the basis of events ........................ Done
-*/
-
 #include <WiFi.h>
 #include <BLEDevice.h>
 #include <BLEUtils.h>
@@ -20,23 +9,21 @@
 #include <EEPROM.h>
 #include <Esp32MQTTClient.h>
 
-struct MyObject {
+struct My_Object {
    char ssid[25];
    char pass[25];
+   char cstr[150];
 };
 
-MyObject customVarr;
+My_Object customVarr;
 
 static bool isHubConnect = false;
 unsigned long Time_Checker = 0;
 int x = 0;
+int y = 0;
 
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-
-//static const char* connectionString = "HostName=<hostname>;DeviceId=<LineId>;SharedAccessKey=<PrimaryKey>";
-
-static const char* connectionString = "";
 
 class MyCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
@@ -45,37 +32,51 @@ class MyCallbacks: public BLECharacteristicCallbacks {
       if (value.length() > 0) {
         Serial.println("=============================================================");
 
-        /* ----- Check for ',' Comma for SSID and PASS split ----- */
-        Serial.print("Entered value: "); for (int i=0; i<value.length(); i++){ Serial.print(value[i]); if(value[i]==','){x = i;} }  
-        Serial.print("Comma at index: "); Serial.println(x);
+          Serial.print("Entered value: "); 
+          for (int i=0; i<value.length(); i++){ 
+            Serial.print(value[i]); 
+            if(value[i]==','){ x = i; Serial.print("',' is at index: "); Serial.println(x); } 
+            if(value[i]=='@'){ y = i; Serial.print("'@' is at index: "); Serial.println(y); } 
+          }
+          
+          /* ----- Make object from struct to carry credentials ----- */
+          My_Object Credentials;   
+          char WiFi_SSID[25] = "";  
+          char WiFi_PASS[25] = ""; 
+          char Conec_STR[150]= "";                                                                
 
-        /* ----- Make object from struct to carry credentials ----- */
-        MyObject Credentials;                                                                      
-        char WiFi_SSID[25] = "";
-        char WiFi_PASS[25] = "";
+          /* ----- Extract WiFi SSID ----- */
+          for (int j = 0; j < x; j++){ WiFi_SSID[j]=value[j]; }                               
+          Serial.print("WiFi_Username : "); Serial.println(WiFi_SSID);
+         
 
-        /* ----- Extract WiFi SSID ----- */
-        for (int j = 0; j < x; j++){ WiFi_SSID[j]=value[j]; }                               
-        Serial.println(WiFi_SSID);
+          /* ----- Extract WiFi PASS if it is provided i.e. x > 0 ----- */
+          if ( x > 0 ) {
+            for (int k = x+1; k < y; k++){ WiFi_PASS[k-(x+1)]=value[k]; }          
+            Serial.print("WiFi_Password : "); Serial.println(WiFi_PASS);
+          }
 
-        /* ----- Extract WiFi PASS ----- */
-        for (int k = x+1; k < value.length(); k++){ WiFi_PASS[k-(x+1)]=value[k]; }          
-        Serial.println(WiFi_PASS); 
+          /* ----- Extract Connection String if it is provided i.e. y > 0 ----- */
+          if ( y > 0 ) {
+            for (int k = y+1; k < value.length(); k++){ Conec_STR[k-(y+1)]=value[k]; }          
+            Serial.print("Connection String : "); Serial.println(Conec_STR);
+          }
 
-        /* ----- Store WiFi Credentials to EEPROM Address 0 ----- */
-        memcpy(Credentials.ssid,WiFi_SSID,sizeof(Credentials.ssid));                        
-        memcpy(Credentials.pass,WiFi_PASS,sizeof(Credentials.pass));          
-        EEPROM.put(0, Credentials);
-        EEPROM.commit();
-        
+          /* ----- Store WiFi Credentials to EEPROM Address 0 ----- */
+          memcpy(Credentials.ssid,WiFi_SSID,sizeof(Credentials.ssid)); 
+          memcpy(Credentials.pass,WiFi_PASS,sizeof(Credentials.pass)); 
+          memcpy(Credentials.cstr,Conec_STR,sizeof(Credentials.cstr)); 
+          EEPROM.put(0, Credentials);
+          EEPROM.commit();
+        }
         Serial.println("=============================================================");
       }
-    }
+    
 };
 
 void setup() {
   Serial.begin(500000);
-  EEPROM.begin(50);
+  EEPROM.begin(500);
   delay(5000);
   Serial1.begin(500000);
   pinMode(14, OUTPUT);  // Red WiFi LED
@@ -86,12 +87,13 @@ void setup() {
 
   /* ----- Retrieve WiFi Credentials from EEPROM ----- */
   EEPROM.get(0, customVarr);
-  Serial.println(customVarr.ssid);
-  Serial.println(customVarr.pass);
+  Serial.print("WiFi_Username : "); Serial.println(customVarr.ssid);
+  Serial.print("WiFi_Password : "); Serial.println(customVarr.pass);
+  Serial.print("Conection Str : "); Serial.println(customVarr.cstr);
 
   /* ----- Turn ON the bluetooth ----- */
   if(digitalRead(21) == HIGH){
-    BLEDevice::init("ESP32 Board");
+    BLEDevice::init("ESP32 Device");
     BLEServer *pServer = BLEDevice::createServer();
     BLEService *pService = pServer->createService(SERVICE_UUID);
     BLECharacteristic *pCharacteristic = pService->createCharacteristic( CHARACTERISTIC_UUID,BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE );
@@ -106,7 +108,7 @@ void setup() {
   connectToWiFi(customVarr.ssid, customVarr.pass);
 
   /* ----- Connect to Azure IoT Hub through Connection String ----- */
-  if (!Esp32MQTTClient_Init((const uint8_t*)connectionString)){ 
+  if (!Esp32MQTTClient_Init((const uint8_t*)customVarr.cstr)){ 
     isHubConnect = false; 
     Serial.println("Initializing IoT hub failed."); 
     return; 
@@ -156,7 +158,7 @@ void connectToWiFi(const char * ssid, const char * pwd){
     ledState = (ledState + 1) % 2;              /* Flip LED State */ 
     delay(500);
     Serial.print(".");
-    if (millis() - Time_Checker > 30000) { ESP.restart(); }
+    if (millis() - Time_Checker > 60000) { ESP.restart(); }
   }
   
   digitalWrite(14, 1); 
