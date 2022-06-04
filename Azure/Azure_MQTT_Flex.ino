@@ -116,7 +116,7 @@ void setup() {
 
   /* ----- Turn ON the bluetooth ----- */
   if (digitalRead(21) == HIGH) {
-    BLEDevice::init("ProCheck WiFi Shield");
+    BLEDevice::init("ESP32 WiFi Shield");
     BLEServer *pServer = BLEDevice::createServer();
     BLEService *pService = pServer->createService(SERVICE_UUID);
     BLECharacteristic *pCharacteristic = pService->createCharacteristic( CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE );
