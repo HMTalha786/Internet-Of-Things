@@ -1,4 +1,5 @@
 #include <WiFi.h>
+#include <DHT.h>;
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEServer.h>
@@ -7,18 +8,22 @@
 #include <stdio.h>
 #include <string.h>
 #include <EEPROM.h>
-#include <Esp32MQTTClient.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+
+float hum;                    // Stores humidity value
+float temp;                   // Stores temperature value
+unsigned long timer = 0;
+
+DHT dht(16, DHT22);           // Initializa pin and dht sensor type
 
 struct My_Object {
   char ssid[25];
   char pass[25];
-  char cstr[150];
+  char curl[150];
 };
 
 My_Object customVarr;
-
-static bool isHubConnect = false;
-unsigned long Time_Checker = 0;
 
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
@@ -49,7 +54,7 @@ class MyCallbacks: public BLECharacteristicCallbacks {
 
           Serial.print("Connection String : ");
           Serial.println(Conec_STR);
-          memcpy(Credentials.cstr, Conec_STR, sizeof(Credentials.cstr));
+          memcpy(Credentials.curl, Conec_STR, sizeof(Credentials.curl));
 
         } else {
           int x;
@@ -85,8 +90,8 @@ class MyCallbacks: public BLECharacteristicCallbacks {
           /* ----- Keep the Connection String Same ----- */
 
           EEPROM.get(0, customVarr);
-          Serial.println(customVarr.cstr);
-          memcpy(Credentials.cstr, customVarr.cstr, sizeof(Credentials.cstr));
+          Serial.println(customVarr.curl);
+          memcpy(Credentials.curl, customVarr.curl, sizeof(Credentials.curl));
         }
 
         /* ----- Store WiFi Credentials to EEPROM Address 0 ----- */
@@ -101,8 +106,8 @@ void setup() {
   Serial.begin(500000);
   EEPROM.begin(500);
   delay(5000);
-  Serial1.begin(500000);
-  pinMode(14, OUTPUT);  // Red WiFi LED
+  dht.begin();
+  pinMode(16, INPUT);   // DHT Sensor
   pinMode(21, OUTPUT);  // BLE Switch
   pinMode(15, OUTPUT);  // Green RGB LED
   pinMode(32, OUTPUT);  // Red RGB LED
@@ -112,11 +117,11 @@ void setup() {
   EEPROM.get(0, customVarr);
   Serial.print("WiFi_Username : "); Serial.println(customVarr.ssid);
   Serial.print("WiFi_Password : "); Serial.println(customVarr.pass);
-  Serial.print("Conection Str : "); Serial.println(customVarr.cstr);
+  Serial.print("Conection URL : "); Serial.println(customVarr.curl);
 
   /* ----- Turn ON the bluetooth ----- */
   if (digitalRead(21) == HIGH) {
-    BLEDevice::init("ProCheck WiFi Shield");
+    BLEDevice::init("Procheck Weather Device");
     BLEServer *pServer = BLEDevice::createServer();
     BLEService *pService = pServer->createService(SERVICE_UUID);
     BLECharacteristic *pCharacteristic = pService->createCharacteristic( CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE );
@@ -129,64 +134,76 @@ void setup() {
 
   /* ----- Connect to WiFi through saved credentials ----- */
   connectToWiFi(customVarr.ssid, customVarr.pass);
-
-  /* ----- Connect to Azure IoT Hub through Connection String ----- */
-  if (!Esp32MQTTClient_Init((const uint8_t*)customVarr.cstr)) {
-    isHubConnect = false;
-    Serial.println("Initializing IoT hub failed.");
-    return;
-  }
-  isHubConnect = true;
-  Serial.println("Connection Established with Azure IoT Hub");
 }
 
 void loop() {
+  http_request();
+  delay(10000);
+}
 
-  if (Serial1.available() > 0) {                /* Check for Serial input pin "Rx" */
-    char bfr[5001];
-    memset(bfr, 0, 5001);
-    Serial1.readBytesUntil('A', bfr, 5000);   /* readBytesUntil(Terminator, data, dataLength) */
-    Serial.println(bfr);
+void http_request() {
 
-    digitalWrite(32, 1);                      /* Blink RGB Red on data recieve from Rx */
-    delay(300);
-    digitalWrite(32, 0);
+  if (WiFi.status() == WL_CONNECTED) {                              //Check WiFi connection status
 
-    if (isHubConnect && Esp32MQTTClient_SendEvent(bfr)) {
-      Serial.println("Succeed");
-      digitalWrite(15, 1);                      /* Blink RGB Green Led on data send through mqtt */
+    hum = dht.readHumidity();
+    temp = dht.readTemperature();
+
+    StaticJsonBuffer<300> JSON_Packet;
+    JsonObject& JSON_Entry = JSON_Packet.createObject();
+
+    JSON_Entry["device"] = "fresh-basket";
+    JSON_Entry["temp"] = temp;
+    JSON_Entry["hum"] = hum;
+
+    char JSONmessageBuffer[300];
+    JSON_Entry.prettyPrintTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
+    Serial.println(JSONmessageBuffer);
+    HTTPClient http;
+    http.begin(customVarr.curl);                                    //Specify destination for HTTP request
+    http.addHeader("Content-Type", "application/json");             //Specify content-type header
+
+    int httpResponseCode = http.POST(JSONmessageBuffer);
+
+    if (httpResponseCode == 200) {
+      String response = http.getString();                                                    //Get the response to the request
+      Serial.print("HTTP Response Code : "); Serial.println(httpResponseCode);               //Print return code
+      Serial.print("Response Payload : "); Serial.println(response);                         //Print request answer
+      digitalWrite(15, 1);
       delay(300);
       digitalWrite(15, 0);
-      delay(300);
-      Serial1.write("1");                       /* To clear SD Card a signal is sent through ESP32`s TX1 to PLC */
     } else {
-      Serial.println("Failure");
-      digitalWrite(33, 1);                      /* Blink RGB Blue Led on data send through mqtt */
+      Serial.print("Error on sending POST: ");
+      Serial.println(httpResponseCode);
+      digitalWrite(33, 1);
       delay(300);
       digitalWrite(33, 0);
-      delay(300);
-      ESP.restart();                            /* Restrart esp32 if there is a failure in send request */
+      ESP.restart();
     }
+    http.end();     //Free resources
+
+  } else {
+    Serial.println("Error in WiFi connection");
+    delay(300);
+    ESP.restart();
   }
 }
 
 void connectToWiFi(const char * ssid, const char * pwd) {
   int ledState = 0;
   Serial.println("Connecting to WiFi network: " + String(ssid));
-  Time_Checker = millis();
+  timer = millis();
   WiFi.begin(ssid, pwd);
 
   while (WiFi.status() != WL_CONNECTED) {
-    digitalWrite(14, ledState);                 /* Blink LED while connecting to WiFi */
+    digitalWrite(32, ledState);                 /* Blink LED while connecting to WiFi */
     ledState = (ledState + 1) % 2;              /* Flip LED State */
     delay(500);
     Serial.print(".");
-    if (millis() - Time_Checker > 60000) {
+    if (millis() - timer > 60000) {
       ESP.restart();
     }
   }
-
-  digitalWrite(14, 1);
+  digitalWrite(32, 0);
   Serial.println();
   Serial.println("WiFi connected!");
   Serial.print("IP address: ");
