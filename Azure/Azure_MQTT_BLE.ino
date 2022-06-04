@@ -24,7 +24,7 @@
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
 int x;
-static const char* connectionString = "HostName=procheck-prod.azure-devices.net;DeviceId=test1_vuqxi;SharedAccessKey=mtxT99ISbTIEQ34BRlTLGnvF8U1SPFvHxZssgaYx8oI=";
+static const char* connectionString = "HostName=prod.azure-devices.net;DeviceId=test1;SharedAccessKey=mtxT99ISPFvHxZssgaYx8oI=";
 static bool isHubConnect = false;
 unsigned long Time_Checker = 0;
 
@@ -87,7 +87,7 @@ void setup() {
   pinMode(33, OUTPUT);
 
   if (digitalRead(21) == HIGH) {
-    BLEDevice::init("PROCHECK WIFI SHIELD");
+    BLEDevice::init("ESP32 WIFI SHIELD");
     BLEServer *pServer = BLEDevice::createServer();
     BLEService *pService = pServer->createService(SERVICE_UUID);
     BLECharacteristic *pCharacteristic = pService->createCharacteristic(CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
