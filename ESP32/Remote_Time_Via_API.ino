@@ -1,8 +1,8 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 
-const char* ssid = "Realme";
-const char* pass = "2k17mte04";
+const char* ssid = "wifi name";
+const char* pass = "wifi password";
 
 int timer;
 
