@@ -16,36 +16,35 @@ ModbusMaster node;
 
 // =====================================================================================================================================================================================
 
-unsigned long Time_Checker = 0;
 unsigned long timer = 60000;      // JSON Packet Sending time Counter 
 
 // EA Data Registers  ===============================================================================================================================================================
 
-#define VDR_L1 0x2830           // L1 Voltage Data Register
-#define VDR_L2 0x2832           // L2 Voltage Data Register
-#define VDR_L3 0x2832           // L3 Voltage Data Register
+#define VDR_L1 3036           // L1 Voltage Data Register
+#define VDR_L2 2832           // L2 Voltage Data Register
+#define VDR_L3 2832           // L3 Voltage Data Register
 
-#define ADR_L1 0x3000           // L1 Current Data Register
-#define ADR_L2 0x3002           // L2 Current Data Register
-#define ADR_L3 0x3004           // L3 Current Data Register
+#define ADR_L1 3000           // L1 Current Data Register
+#define ADR_L2 3002           // L2 Current Data Register
+#define ADR_L3 3004           // L3 Current Data Register
 
-#define TPDR_L1 0x3054          // L1 True Power Data Register
-#define TPDR_L2 0x3056          // L2 True Power Data Register
-#define TPDR_L3 0x3058          // L3 True Power Data Register
+#define TPDR_L1 3054          // L1 True Power Data Register
+#define TPDR_L2 3056          // L2 True Power Data Register
+#define TPDR_L3 3058          // L3 True Power Data Register
 
-#define APDR_L1 0x3070          // L1 Apparent Power Data Register
-#define APDR_L2 0x3072          // L2 Apparent Power Data Register
-#define APDR_L3 0x3074          // L3 Apparent Power Data Register
+#define APDR_L1 3070          // L1 Apparent Power Data Register
+#define APDR_L2 3072          // L2 Apparent Power Data Register
+#define APDR_L3 3074          // L3 Apparent Power Data Register
 
-#define PVDR_L12 0x3020         // L1 - L2 Phase Voltage Data Register
-#define PVDR_L23 0x3022         // L2 - L3 Phase Voltage Data Register
-#define PVDR_L31 0x3024         // L3 - L1 Phase Voltage Data Register
+#define PVDR_L12 3020         // L1 - L2 Phase Voltage Data Register
+#define PVDR_L23 3022         // L2 - L3 Phase Voltage Data Register
+#define PVDR_L31 3024         // L3 - L1 Phase Voltage Data Register
 
-#define TTPDR 0x3060            // Total True Power Data Register
-#define TAPDR 0x3076            // Total Apparent Power Data Register
+#define TTPDR 3060            // Total True Power Data Register
+#define TAPDR 3076            // Total Apparent Power Data Register
 
-#define TFDR 0x3110             // Total Frequency Data Register
-#define KWHDR 0x2700            // Kilo Watt Hour Data Register
+#define TFDR 3110             // Total Frequency Data Register
+#define KWHDR 2700            // Kilo Watt Hour Data Register
 
 // L1 Phase Parameters ==============================================================================================================================================================
 
@@ -101,7 +100,7 @@ void postTransmission(){  digitalWrite(MAX485_RE, 0);  digitalWrite(MAX485_DE, 0
 float getData( uint16_t dataRegister, float correction_factor ) {
 
   float result;
-  uint8_t dataRegisterNode = node.readHoldingRegisters(dataRegister, 2);
+  uint8_t dataRegisterNode = node.readHoldingRegisters( ( dataRegister - 1 ), 2);
   uint16_t buff[2];
 
   if ( dataRegisterNode == node.ku8MBSuccess ) {
@@ -111,16 +110,11 @@ float getData( uint16_t dataRegister, float correction_factor ) {
     }
 
     uint32_t value = ( buff[0] << 16 ) + ( buff[1] );
-    float data = HexTofloat(value);
+//    float data = HexTofloat(value);
+    result = (*(float*)&value);
   }
 
   return result;
-}
-
-// =============================================================================================================================================
-
-float HexTofloat(uint32_t x) {
-  return (*(float*)&x);
 }
 
 // ====================================================================================================================================================================================
