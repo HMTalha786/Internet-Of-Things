@@ -235,8 +235,11 @@ float getData( uint16_t dataRegister, float correction_factor ) {
     uint32_t value = ( buff[0] << 16 ) + ( buff[1] );
     result = (*(float*)&value);
   }
-
-  return result;
+  if( result == result ){
+    return result;
+  } else { 
+    return 0;
+  }
 }
 
 // ====================================================================================================================================================================================
