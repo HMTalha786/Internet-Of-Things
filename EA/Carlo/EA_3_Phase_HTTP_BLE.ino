@@ -1,4 +1,5 @@
 #include <WiFi.h>
+#include <time.h>
 #include <EEPROM.h>
 #include <ESP32Ping.h>
 #include <BLEDevice.h>
@@ -11,8 +12,8 @@
 
 // =====================================================================================================================================================================================
 
-#define MAX485_DE 14    // Driver Enable
-#define MAX485_RE 32    // Receiver Enable
+#define MAX485_DE 19    // Driver Enable
+#define MAX485_RE 18    // Receiver Enable
 
 // =====================================================================================================================================================================================
 
@@ -24,17 +25,28 @@ ModbusMaster node;
 
 // =====================================================================================================================================================================================
 
+// a string to hold NTP server to request epoch time
+const char* ntpServer = "pool.ntp.org";
+
+// Variable to hold current epoch timestamp
+unsigned long Epoch_Time; 
+
+// Get_Epoch_Time() Function that gets current epoch time
+unsigned long Get_Epoch_Time() {
+  time_t now;
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)) {
+    //Serial.println("Failed to obtain time");
+    return(0);
+  }
+  time(&now);
+  return now;
+}
+
+// =====================================================================================================================================================================================
+
 unsigned long Time_Checker = 0;
-unsigned long timer = 30000;      // JSON Packet Sending time Counter 
-
-// =====================================================================================================================================================================================
-
-const char* ssid = "Procheck";
-const char* pass = "Procheck@123";
-
-// =====================================================================================================================================================================================
-
-unsigned long Duration = 1000;   // Duration Handling 
+unsigned long timer = 60000;      // JSON Packet Sending time Counter 
 
 // =====================================================================================================================================================================================
 
@@ -155,6 +167,8 @@ class MyCallbacks: public BLECharacteristicCallbacks {
 
 #define TFDR 0x02B8             // Total Frequency Data Register
 
+#define KWHDR 0x02C6            // Kilo Watt Hour Data Register
+
 // L1 Phase Parameters ==============================================================================================================================================================
 
 float V_L1;     // L1 Voltage
@@ -189,6 +203,9 @@ float TAP;      // Total Apparent Power
 float TRP;      // Total Reactive Power
 float TPF;      // Total Power Factor
 float TF;       // Total Frequency
+float KWH;      // Total Killo Watt Hours
+float CSP;      // Calculated System Power
+float ASP;      // Aggregated System Power
 
 // Line to Line Voltages ==============================================================================================================================================================
 
@@ -221,6 +238,24 @@ float getData( uint16_t dataRegister, float correction_factor ) {
   return result;
 }
 
+float getData_fourbytes( uint16_t dataRegister, float correction_factor ) {
+  float result;
+  uint8_t dataRegisterNode = node.readHoldingRegisters(dataRegister, 4);
+  if ( dataRegisterNode == node.ku8MBSuccess )                       // [readHoldingRegisters(Address of the register, Number of registers want to be read from this address)]
+  {
+    byte byte0 = node.getResponseBuffer(0x00);
+    byte byte1 = node.getResponseBuffer(0x01);
+    byte byte2 = node.getResponseBuffer(0x02);
+    byte byte3 = node.getResponseBuffer(0x03);
+
+    unsigned long joinedData = 0;
+    joinedData = (byte0 << 32) |(byte1 << 16) | (byte2 << 8) | (byte3);
+    
+    result = joinedData * correction_factor;
+  }
+  return result;
+}
+
 // ====================================================================================================================================================================================
 
 void setup() {
@@ -241,7 +276,7 @@ void setup() {
 
   Serial1.begin(9600, SERIAL_8N1, 16, 17);  // ( Baud rate = 9600, Configuration = [8 Data bits,No parity,1 Stop bit], Rx pin, Tx pin)
 
-  node.begin(1, Serial1);                   // Modbus slave ID 1
+  node.begin(2, Serial1);                   // Modbus slave ID 1
 
   // Callbacks allow us to configure the RS485 transceiver correctly
   node.preTransmission(preTransmission);
@@ -255,7 +290,7 @@ void setup() {
 
   /* ----- Turn ON the bluetooth ----- */
   if (digitalRead(21) == HIGH) {
-    BLEDevice::init("ProCheck WiFi Shield");
+    BLEDevice::init("ProCheck WiFi Gateway");
     BLEServer *pServer = BLEDevice::createServer();
     BLEService *pService = pServer->createService(SERVICE_UUID);
     BLECharacteristic *pCharacteristic = pService->createCharacteristic( CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE );
@@ -269,97 +304,40 @@ void setup() {
   /* ----- Connect to WiFi through saved credentials ----- */
   Connect_To_WiFi(customVarr.ssid, customVarr.pass);
 
+  // Configure NTP Server
+  configTime(0, 0, ntpServer);
+
 }
 
 // ====================================================================================================================================================================================
 
 void loop() {
-
-  // JSON Packet Sent after every 30 sec ---------------------------------------------------------------------------------------------------------
-  
-  if ( millis() >= timer ) {    timer = millis() + 30000UL;    json_packet_sender();  }
-
-  // ---------------------------------------------------------------------------------------------------------------------------------------------
-  
-  if ( millis() >= Duration ) {
-
-    Duration = millis() + 1000UL;
-
-    Serial.println(" ________________________________________________________ Voltage ________________________________________________________ ");
-    
-    V_L1 = getData(VDR_L1, 0.1);   Serial.print("L1 Voltage : ");    Serial.println(V_L1);    delay(10);
-    V_L2 = getData(VDR_L2, 0.1);   Serial.print("L2 Voltage : ");    Serial.println(V_L2);    delay(10);
-    V_L3 = getData(VDR_L3, 0.1);   Serial.print("L3 Voltage : ");    Serial.println(V_L3);    delay(10);
-  
-    Serial.println(" ________________________________________________________ Current ________________________________________________________ ");
-    
-    A_L1 = getData(ADR_L1, 0.007);   Serial.print("L1 Current : ");    Serial.println(A_L1);    delay(10);
-    A_L2 = getData(ADR_L2, 0.007);   Serial.print("L2 Current : ");    Serial.println(A_L2);    delay(10);
-    A_L3 = getData(ADR_L3, 0.007);   Serial.print("L3 Current : ");    Serial.println(A_L3);    delay(10);
-
-    Serial.println(" ________________________________________________________ True Power ________________________________________________________ ");
-    
-    TP_L1 = getData(TPDR_L1, 0.7);   Serial.print("L1 True Power : ");    Serial.println(TP_L1);    delay(10);
-    TP_L2 = getData(TPDR_L2, 0.7);   Serial.print("L2 True Power : ");    Serial.println(TP_L2);    delay(10);
-    TP_L3 = getData(TPDR_L3, 0.7);   Serial.print("L3 True Power : ");    Serial.println(TP_L3);    delay(10);
-
-    Serial.println(" ________________________________________________________ Apparent Power ________________________________________________________ ");
-    
-    AP_L1 = getData(APDR_L1, 0.7);   Serial.print("L1 Apparent Power : ");    Serial.println(AP_L1);    delay(10);
-    AP_L2 = getData(APDR_L2, 0.7);   Serial.print("L2 Apparent Power : ");    Serial.println(AP_L2);    delay(10);
-    AP_L3 = getData(APDR_L3, 0.7);   Serial.print("L3 Apparent Power : ");    Serial.println(AP_L3);    delay(10);
-
-    Serial.println(" ________________________________________________________ Reactive Power ________________________________________________________ ");
-
-    RP_L1 = sqrt( sq(AP_L1) - sq(TP_L1) );   Serial.print("L1 Reactive Power : ");    Serial.println(RP_L1);    delay(10);
-    RP_L2 = sqrt( sq(AP_L2) - sq(TP_L2) );   Serial.print("L2 Reactive Power : ");    Serial.println(RP_L2);    delay(10);
-    RP_L3 = sqrt( sq(AP_L3) - sq(TP_L3) );   Serial.print("L3 Reactive Power : ");    Serial.println(RP_L3);    delay(10);
-
-    Serial.println(" ________________________________________________________ Power Factor ________________________________________________________ ");
-    
-    if (AP_L1 > 0) { PF_L1 = TP_L1 / AP_L1; } else { PF_L1 = 0.0; }
-    if (AP_L2 > 0) { PF_L2 = TP_L2 / AP_L2; } else { PF_L2 = 0.0; }
-    if (AP_L3 > 0) { PF_L3 = TP_L3 / AP_L3; } else { PF_L1 = 0.0; }
-    
-    Serial.print("L1 Power Factor : ");   Serial.println(PF_L1);    delay(10);
-    Serial.print("L2 Power Factor : ");   Serial.println(PF_L2);    delay(10);
-    Serial.print("L3 Power Factor : ");   Serial.println(PF_L3);    delay(10);
-   
-    Serial.println(" ________________________________________________________ Total 3 Phase Aggregated Values ________________________________________________________ ");
-  
-    TF = getData(TFDR, 0.1);           Serial.print("Total Frequency ");                 Serial.println(TF);    delay(10);
-    
-    TTP = getData(TTPDR, 0.7);         Serial.print("Total 3 Phase True Power ");        Serial.println(TTP);   delay(10);
-    
-    TAP = getData(TAPDR, 0.7);         Serial.print("Total 3 Phase Apparent Power ");    Serial.println(TAP);   delay(100);
-    
-    TRP = sqrt( sq(TAP) - sq(TTP) );   Serial.print("Total 3 Phase Reactive Power ");    Serial.println(TRP);   delay(100);
-  
-    if (TAP > 0) { TPF = TTP / TAP; } else { TPF = 0.0; }
-
-    Serial.print("Total 3 Phase Power Factor ");    Serial.println(TPF);    delay(10);
-  
-    Serial.println(" ________________________________________________________ Line to Line / Phase Voltages  ________________________________________________________ ");
-    
-    LV_12 = getData(PVDR_L12, 0.1);   Serial.print("L1-L2 Phase Voltage ");   Serial.println(LV_12);   delay(10);
-  
-    LV_23 = getData(PVDR_L23, 0.1);   Serial.print("L2-L3 Phase Voltage ");   Serial.println(LV_23);   delay(10);
-  
-    LV_31 = getData(PVDR_L31, 0.1);   Serial.print("L3-L1 Phase Voltage ");   Serial.println(LV_31);   delay(10);
-
+  if ( millis() >= timer ) { 
+    Serial.println(" Sending Data Packet ");  
+    timer = millis() + 60000UL;  
+    Json_Packet_Sender(); 
   }
+//  delay(1000);
+  esp_task_wdt_reset();
 }
 
 // ==================================================================================================================================================================================
 
-void json_packet_sender() {
+void Json_Packet_Sender() {
 
-  StaticJsonBuffer<500> JSON_Packet;
+  Read_EA_Param();  // Read Energy Analyzer Parameters
+
+  StaticJsonBuffer<900> JSON_Packet;
   JsonObject& JSON_Entry = JSON_Packet.createObject();
 
   JSON_Entry["device"] = "PROCHECK-EA-1";
+
+  JSON_Entry["UTS"] = Epoch_Time;
   
   JSON_Entry["OSF"] = TF;
+  JSON_Entry["KWH"] = KWH;
+  JSON_Entry["CSP"] = CSP;
+  JSON_Entry["ASP"] = ASP;
   
   JSON_Entry["V1"] = V_L1;
   JSON_Entry["V2"] = V_L2;
@@ -394,29 +372,131 @@ void json_packet_sender() {
   JSON_Entry["L23"] = LV_23;
   JSON_Entry["L31"] = LV_31;
 
-  char JSONmessageBuffer[500];
+  char JSONmessageBuffer[900];
   JSON_Entry.prettyPrintTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
   Serial.print(JSONmessageBuffer);
 
-  if (WiFi.status() == WL_CONNECTED) { //Check WiFi connection status
-
+  if (WiFi.status() == WL_CONNECTED) {                              // Check WiFi connection status 
+    
     HTTPClient http;
-    http.begin(customVarr.cstr);  //Specify destination for HTTP request
+    http.begin(customVarr.cstr);                                    // Specify destination for HTTP request
     http.addHeader("Content-Type", "application/json");             // Specify content-type header
     int httpResponseCode = http.POST(JSONmessageBuffer);            // Send the actual POST request
-
+    
     if (httpResponseCode > 0) {
-      String response = http.getString();   // Get the response to the request
-      Serial.println(httpResponseCode);     // Print return code
-      Serial.println(response);             // Print request answer
+      String response = http.getString();                           // Get the response to the request
+      Serial.println(httpResponseCode);                             // Print return code
+      Serial.println(response);                                     // Print request answer
     } else {
       Serial.print("Error on sending POST: ");
       Serial.println(httpResponseCode);
+      Serial.println("Re-Connecting to WiFi");
+      Connect_To_WiFi(customVarr.ssid, customVarr.pass);
+      Serial.println("Re-Sending JSON Data Packet");
+      Json_Packet_Sender();
     }
+    
     http.end();  //Free resources
+    
   } else {
+    
     Serial.println("Error in WiFi connection");
+    Serial.println("Re-Connecting to WiFi");
+    Connect_To_WiFi(customVarr.ssid, customVarr.pass);
+    Serial.println("Re-Sending JSON Data Packet");
+    Json_Packet_Sender();
+    
   }
+}
+
+// ==================================================================================================================================================================================
+
+void Read_EA_Param(){
+  
+  Serial.println(" ________________________________________________________ Voltage ________________________________________________________ ");
+    
+  V_L1 = getData(VDR_L1, 0.1);   Serial.print("L1 Voltage : ");    Serial.println(V_L1);    delay(10);
+  V_L2 = getData(VDR_L2, 0.1);   Serial.print("L2 Voltage : ");    Serial.println(V_L2);    delay(10);
+  V_L3 = getData(VDR_L3, 0.1);   Serial.print("L3 Voltage : ");    Serial.println(V_L3);    delay(10);
+
+  Serial.println(" ________________________________________________________ Current ________________________________________________________ ");
+  
+  A_L1 = getData(ADR_L1, 0.02);   Serial.print("L1 Current : ");    Serial.println(A_L1);    delay(10);
+  A_L2 = getData(ADR_L2, 0.02);   Serial.print("L2 Current : ");    Serial.println(A_L2);    delay(10);
+  A_L3 = getData(ADR_L3, 0.02);   Serial.print("L3 Current : ");    Serial.println(A_L3);    delay(10);
+
+  Serial.println(" ________________________________________________________ True Power ________________________________________________________ ");
+  
+  TP_L1 = getData(TPDR_L1, 2.0);   Serial.print("L1 True Power : ");    Serial.println(TP_L1);    delay(10);
+  TP_L2 = getData(TPDR_L2, 2.0);   Serial.print("L2 True Power : ");    Serial.println(TP_L2);    delay(10);
+  TP_L3 = getData(TPDR_L3, 2.0);   Serial.print("L3 True Power : ");    Serial.println(TP_L3);    delay(10);
+
+  Serial.println(" ________________________________________________________ Apparent Power ________________________________________________________ ");
+  
+  AP_L1 = getData(APDR_L1, 2.0);   Serial.print("L1 Apparent Power : ");    Serial.println(AP_L1);    delay(10);
+  AP_L2 = getData(APDR_L2, 2.0);   Serial.print("L2 Apparent Power : ");    Serial.println(AP_L2);    delay(10);
+  AP_L3 = getData(APDR_L3, 2.0);   Serial.print("L3 Apparent Power : ");    Serial.println(AP_L3);    delay(10);
+
+  Serial.println(" ________________________________________________________ Reactive Power ________________________________________________________ ");
+  if(sq(AP_L1)>sq(TP_L1)){ RP_L1 = sqrt( sq(AP_L1) - sq(TP_L1) );   Serial.print("L1 Reactive Power : ");    Serial.println(RP_L1);    delay(10);} else{RP_L1=0.0;}
+  if(sq(AP_L2)>sq(TP_L2)){ RP_L2 = sqrt( sq(AP_L2) - sq(TP_L2) );   Serial.print("L2 Reactive Power : ");    Serial.println(RP_L2);    delay(10);} else{RP_L2=0.0;}
+  if(sq(AP_L3)>sq(TP_L3)){ RP_L3 = sqrt( sq(AP_L3) - sq(TP_L3) );   Serial.print("L3 Reactive Power : ");    Serial.println(RP_L3);    delay(10);} else{RP_L3=0.0;}
+ 
+  Serial.println(" ________________________________________________________ Power Factor ________________________________________________________ ");
+  
+  if (AP_L1 > 0) { PF_L1 = TP_L1 / AP_L1; } else { PF_L1 = 0.0; }
+  if (AP_L2 > 0) { PF_L2 = TP_L2 / AP_L2; } else { PF_L2 = 0.0; }
+  if (AP_L3 > 0) { PF_L3 = TP_L3 / AP_L3; } else { PF_L1 = 0.0; }
+  
+  Serial.print("L1 Power Factor : ");   Serial.println(PF_L1);    delay(10);
+  Serial.print("L2 Power Factor : ");   Serial.println(PF_L2);    delay(10);
+  Serial.print("L3 Power Factor : ");   Serial.println(PF_L3);    delay(10);
+ 
+  Serial.println(" ________________________________________________________ Total 3 Phase Aggregated Values ________________________________________________________ ");
+
+  TF = getData(TFDR, 0.1);           Serial.print("Total Frequency ");                 Serial.println(TF);    delay(10);
+  
+  TTP = getData(TTPDR, 2.0);         Serial.print("Total 3 Phase True Power ");        Serial.println(TTP);   delay(10);
+  
+  TAP = getData(TAPDR, 2.0);         Serial.print("Total 3 Phase Apparent Power ");    Serial.println(TAP);   delay(20);
+
+  if(sq(TAP)>sq(TTP)){ 
+    TRP = sqrt( sq(TAP) - sq(TTP) );   
+    Serial.print("Total 3 Phase Reactive Power ");    
+    Serial.println(TRP);    
+    delay(10);
+  } else{TRP=0.0;}
+
+  KWH = getData_fourbytes(KWHDR, 0.01);      
+  Serial.print("Data Register based KWH ");    
+  Serial.println(KWH);   
+  delay(100);
+
+  CSP = ( TTP / 60 );
+  Serial.print("Calculated System Power ");    
+  Serial.println(CSP);   
+  delay(100);
+
+  ASP = ASP + CSP; 
+  Serial.print("Aggregated System Power ");    
+  Serial.println(ASP);   
+  delay(100);
+  
+  if (TAP > 0) { TPF = TTP / TAP; } else { TPF = 0.0; }
+
+  Serial.print("Total 3 Phase Power Factor ");    Serial.println(TPF);    delay(10);
+
+  Serial.println(" ________________________________________________________ Line to Line / Phase Voltages  ________________________________________________________ ");
+  
+  LV_12 = getData(PVDR_L12, 0.1);   Serial.print("L1-L2 Phase Voltage ");   Serial.println(LV_12);   delay(10);
+
+  LV_23 = getData(PVDR_L23, 0.1);   Serial.print("L2-L3 Phase Voltage ");   Serial.println(LV_23);   delay(10);
+
+  LV_31 = getData(PVDR_L31, 0.1);   Serial.print("L3-L1 Phase Voltage ");   Serial.println(LV_31);   delay(10);
+
+  Serial.println(" ________________________________________________________ Unix Timestamp  ________________________________________________________ ");
+
+  Epoch_Time = Get_Epoch_Time();    Serial.print("Epoch Unix Timestamp : ");   Serial.println(Epoch_Time);    delay(10);
 }
 
 // ====================================================================================================================================================================================
@@ -433,8 +513,9 @@ void Connect_To_WiFi(const char * ssid, const char * pwd) {
 
   while (WiFi.status() != WL_CONNECTED) {
     Serial.println("Connecting to " + String(ssid));
+    delay(500);
     /* Restart ESP32 if not connected for 5 minutes */
-    if ( millis() - Time_Checker > 600000 ) {
+    if ( millis() - Time_Checker > 60000 ) {
       ESP.restart();
     }
   }

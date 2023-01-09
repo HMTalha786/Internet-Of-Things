@@ -1,13 +1,18 @@
 #include <PZEM004Tv30.h>
+#include <HardwareSerial.h>
 
-PZEM004Tv30 pzem(Serial1, 16, 17);
+//HardwareSerial MySerial(0);
+
+PZEM004Tv30 pzem(&Serial1, 14, 15);
 
 void setup() {
-  Serial.begin(115200);
-
+  Serial.begin(9600);
+  Serial1.begin(9600, SERIAL_8N1, 14, 15);
+//  MySerial.begin(9600, SERIAL_8N1, 32, 33);
 }
 
 void loop() {
+
   float voltage = pzem.voltage();
   if (voltage != NAN) {
     Serial.print("Voltage: "); Serial.print(voltage); Serial.println("V");
