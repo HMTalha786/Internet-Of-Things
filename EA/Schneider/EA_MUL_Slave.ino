@@ -241,7 +241,8 @@ float getData( uint16_t dataRegister, float correction_factor ) {
   if ( result == result ) {
     return result;
   } else {
-    return 0;
+    result = 0.0;
+    return result;
   }
   
 }
