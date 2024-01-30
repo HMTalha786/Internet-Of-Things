@@ -22,11 +22,11 @@ String SAS_Signature;
 
 // ==================================================================================================================================================================================================
 
-String SAS_Generation_URL = "https://procheckprodfunctions.azurewebsites.net/api/GetSasToken?code=4ji8Wv3sHFDHRaoGgcjhzZos6IaWZmwgdUW2POuVUtBXRBY5%2F0MbSw%3D%3D";
+String SAS_Generation_URL = "https://Cotbusprodfunctions.azurewebsites.net/api/GetSasToken?code=4ji8Wv3sHFDHRaoGgcjhzZos6IaWZmwgdUW2POuVUtBXRBY5%2F0MbSw%3D%3D";
 
 // ==================================================================================================================================================================================================
 
-String Azure_URL = "https://procheck-prod.azure-devices.net/devices/" + Line_ID + "/messages/events?api-version=2020-03-13";
+String Azure_URL = "https://Cotbus-prod.azure-devices.net/devices/" + Line_ID + "/messages/events?api-version=2020-03-13";
 
 // ==================================================================================================================================================================================================
 
@@ -111,7 +111,7 @@ void fetch_sas_token() {
     Serial.println(SAS_Token);
 
     /* Whole SAS Signature for HTTP Authorization */
-    SAS_Signature = "SharedAccessSignature sr=procheck-prod.azure-devices.net%2Fdevices%2F" + Line_ID + "&sig=" + SAS_Token;
+    SAS_Signature = "SharedAccessSignature sr=Cotbus-prod.azure-devices.net%2Fdevices%2F" + Line_ID + "&sig=" + SAS_Token;
     Serial.print("SAS_Signature : ");
     Serial.println(SAS_Signature);
 

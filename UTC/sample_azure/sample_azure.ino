@@ -2,8 +2,8 @@
 #include "Esp32MQTTClient.h"
 
 const char* ssid = "mespack2";
-const char* pass = "Procheck123";
-static const char* connectionString = "HostName=procheck-oee-uat.azure-devices.net;DeviceId=test101_ii7mm;SharedAccessKey=dj5+PLg1lCxXixjNluDOJq+3tOur8B5zszuTQuC1rto=";
+const char* pass = "Cotbus123";
+static const char* connectionString = "HostName=Cotbus-oee-uat.azure-devices.net;DeviceId=test101_ii7mm;SharedAccessKey=dj5+PLg1lCxXixjNluDOJq+3tOur8B5zszuTQuC1rto=";
 
 static bool hasIoTHub = false;
 

@@ -3,8 +3,8 @@
 #include "time.h"
 
 // Replace ssid and password with your network credentials
-const char* ssid = "Procheck";
-const char* password = "Procheck@123";
+const char* ssid = "Cotbus";
+const char* password = "Cotbus@123";
 
 // a string to hold NTP server to request epoch time
 const char* ntpServer = "pool.ntp.org";

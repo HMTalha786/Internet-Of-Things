@@ -159,7 +159,7 @@ void setup() {
 
   /* ----- Turn ON the bluetooth ----- */
   if (digitalRead(21) == HIGH) {
-    BLEDevice::init("ProCheck WiFi Shield");
+    BLEDevice::init("Cotbus WiFi Shield");
     BLEServer *pServer = BLEDevice::createServer();
     BLEService *pService = pServer->createService(SERVICE_UUID);
     BLECharacteristic *pCharacteristic = pService->createCharacteristic( CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE );
@@ -310,7 +310,7 @@ void Connect_To_WiFi(const char * ssid, const char * pwd) {
   unsigned long WiFi_Time_Check = millis();
 
   //define hostname
-  String hostname = "Procheck WiFi Shield";
+  String hostname = "Cotbus WiFi Shield";
   WiFi.setHostname(hostname.c_str()); 
   Serial.print("Connecting to WiFi network: " + String(ssid));
   WiFi.begin(ssid, pwd);

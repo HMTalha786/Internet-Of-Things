@@ -12,7 +12,7 @@ void setup() {
   WiFi.mode(WIFI_STA);
 
   // Add list of wifi networks
-  wifiMulti.addAP("Procheck", "Procheck@123");
+  wifiMulti.addAP("Cotbus", "Cotbus@123");
   wifiMulti.addAP("Laptop", "LPC12345");
   wifiMulti.addAP("Realme", "2k17mte04");
 

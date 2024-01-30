@@ -121,7 +121,7 @@ void setup() {
 
   /* ----- Turn ON the bluetooth ----- */
   if (digitalRead(21) == HIGH) {
-    BLEDevice::init("Procheck Weather Device");
+    BLEDevice::init("Cotbus Weather Device");
     BLEServer *pServer = BLEDevice::createServer();
     BLEService *pService = pServer->createService(SERVICE_UUID);
     BLECharacteristic *pCharacteristic = pService->createCharacteristic( CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE );

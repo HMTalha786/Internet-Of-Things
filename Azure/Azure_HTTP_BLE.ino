@@ -208,7 +208,7 @@ void setup() {
 
   /* ----- Turn ON the bluetooth ----- */
   if (digitalRead(21) == HIGH) {
-    BLEDevice::init("ProCheck WiFi Shield");
+    BLEDevice::init("Cotbus WiFi Shield");
     BLEServer *pServer = BLEDevice::createServer();
     BLEService *pService = pServer->createService(SERVICE_UUID);
     BLECharacteristic *pCharacteristic = pService->createCharacteristic( CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE );
@@ -309,7 +309,7 @@ void Connect_WiFi_Ping_Generate_SAS_Token(const char * ssid, const char * pwd) {
 
   /* Create HTTP Client Instance */
   HTTPClient http;
-  http.begin("https://procheckprodfunctions.azurewebsites.net/api/GetSasToken?code=4ji8Wv3sHFDHRaoGgcjhzZos6IaWZmwgdUW2POuVUtBXRBY5%2F0MbSw%3D%3D");
+  http.begin("https://Cotbusprodfunctions.azurewebsites.net/api/GetSasToken?code=4ji8Wv3sHFDHRaoGgcjhzZos6IaWZmwgdUW2POuVUtBXRBY5%2F0MbSw%3D%3D");
   http.addHeader("Content-Type", "application/json");
 
   /*Create JSON Request Body */
@@ -341,12 +341,12 @@ void Connect_WiFi_Ping_Generate_SAS_Token(const char * ssid, const char * pwd) {
     Serial.println(SAS_Token);
 
     /* Whole SAS Signature for HTTP Authorization */
-    SAS_Signature = "SharedAccessSignature sr=procheck-prod.azure-devices.net%2Fdevices%2F" + String(customVarr.deid) + "&sig=" + SAS_Token;
+    SAS_Signature = "SharedAccessSignature sr=Cotbus-prod.azure-devices.net%2Fdevices%2F" + String(customVarr.deid) + "&sig=" + SAS_Token;
     Serial.print("SAS_Signature : ");
     Serial.println(SAS_Signature);
 
     /*Azure IoT Hub HTTP Endpoint for making Post Request*/
-    Azure_URL = "https://procheck-prod.azure-devices.net/devices/" + String(customVarr.deid) + "/messages/events?api-version=2020-03-13";
+    Azure_URL = "https://Cotbus-prod.azure-devices.net/devices/" + String(customVarr.deid) + "/messages/events?api-version=2020-03-13";
     Serial.print("Azure IoT Hub Url : ");
     Serial.println(Azure_URL);
 

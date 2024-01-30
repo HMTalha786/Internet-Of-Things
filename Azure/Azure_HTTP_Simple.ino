@@ -1,11 +1,11 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 
-const char* ssid = "Procheck";
-const char* pass = "Procheck@123";
+const char* ssid = "Cotbus";
+const char* pass = "Cotbus@123";
 
-const char* url =  "https://procheck-prod.azure-devices.net/devices/testingnow_avi63/messages/events?api-version=2020-03-13";
-const char* sas =  "SharedAccessSignature sr=procheck-prod.azure-devices.net%2Fdevices%2Ftestingnow_avi63&sig=%2Bwgm%2BuRpHnN5jn8px4916zLWMUUxcWjHgmHJcXGH8bQ%3D&se=1685168670";
+const char* url =  "https://Cotbus-prod.azure-devices.net/devices/testingnow_avi63/messages/events?api-version=2020-03-13";
+const char* sas =  "SharedAccessSignature sr=Cotbus-prod.azure-devices.net%2Fdevices%2Ftestingnow_avi63&sig=%2Bwgm%2BuRpHnN5jn8px4916zLWMUUxcWjHgmHJcXGH8bQ%3D&se=1685168670";
 
 const char* body = "{\"device\":\"357073299541579\",\"temp\":\"24.6\",\"hum\":\"41.25\",\"bat\":\"41.54\"}";
 void setup() {

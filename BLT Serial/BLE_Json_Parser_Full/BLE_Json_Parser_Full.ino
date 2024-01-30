@@ -9,7 +9,7 @@ BluetoothSerial SerialBT;
 
 void setup() {
   Serial.begin(9600);
-  SerialBT.begin("Procheck_Test");       //Bluetooth device name
+  SerialBT.begin("Cotbus_Test");       //Bluetooth device name
   Serial.println("The device started, now you can pair it with bluetooth!");
 }
 
